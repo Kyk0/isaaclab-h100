@@ -30,7 +30,9 @@ Developed at the Advanced Telerobotics Research Lab, Kent State University.
 - **Training works.** Use `--headless`. Don't use cameras or `--video`.
 - **Red errors at startup are fine** (`No device could be created` and similar), as long as the log then prints `Environment device : cuda:0` and training starts.
 
-    <img src="images/h100-startup-log.png" width="720" alt="Terminal log from an H100 training run: red Isaac Sim renderer errors such as 'No device could be created' and 'Invalid getDeviceInfo parameters' and an empty Vulkan GPU table, followed by 'Environment device : cuda:0' and normal Learning iteration blocks">
+    <p align="center">
+      <img src="images/h100-startup-log.png" width="720" alt="Terminal log from an H100 training run: red Isaac Sim renderer errors such as 'No device could be created' and 'Invalid getDeviceInfo parameters' and an empty Vulkan GPU table, followed by 'Environment device : cuda:0' and normal Learning iteration blocks">
+    </p>
 
 - **Videos and cameras don't work.** Render on a machine with an RTX GPU.
 - **Can't render anything, not even MuJoCo?** Your server probably has the compute-only driver (`nvidia-headless-*-server`). It ships without Vulkan and EGL. Ask your admin for the full driver (`nvidia-driver-*-open`).

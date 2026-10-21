@@ -9,7 +9,9 @@ Seeing scary red text? Search this page for your exact message. Every entry is a
 
 What a healthy start looks like on a compute-only H100 (real log, shortened):
 
-<img src="../images/h100-startup-log.png" width="720" alt="Terminal log from an H100 training run: red Isaac Sim renderer errors such as 'No device could be created' and 'Invalid getDeviceInfo parameters' and an empty Vulkan GPU table, followed by 'Environment device : cuda:0' and normal Learning iteration blocks">
+<p align="center">
+  <img src="../images/h100-startup-log.png" width="720" alt="Terminal log from an H100 training run: red Isaac Sim renderer errors such as 'No device could be created' and 'Invalid getDeviceInfo parameters' and an empty Vulkan GPU table, followed by 'Environment device : cuda:0' and normal Learning iteration blocks">
+</p>
 
 All of these come from Kit trying to start the renderer on a machine with no NVIDIA Vulkan driver. They appear on every run with `nvidia-headless-*-server` drivers. **Cause:** no Vulkan ICD (`/usr/share/vulkan/icd.d/nvidia_icd.json` missing). **Fix:** none needed for training. To make them go away, ask the admin for the full driver package (`nvidia-driver-<ver>-open`, which includes `libnvidia-gl-<ver>`); on our H100 that removed every one of them.
 

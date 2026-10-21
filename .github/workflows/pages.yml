@@ -39,7 +39,7 @@ jobs:
           # Pages may report the custom-domain base URL as http://, the site is served over https
           SITE_URL="${{ steps.pages.outputs.base_url }}"
           SITE_URL="${SITE_URL/#http:\/\//https://}"
-          for f in _site/index.html _site/robots.txt _site/sitemap.xml; do
+          for f in _site/index.html _site/404.html _site/robots.txt _site/sitemap.xml; do
             sed -i -e "s#__SITE_URL__#${SITE_URL}#g" -e "s#__LASTMOD__#$(date -u +%Y-%m-%d)#g" "$f"
           done
           ls -la _site _site/images

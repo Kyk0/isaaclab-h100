@@ -45,7 +45,9 @@ The first one is an easy admin fix: install the full driver package. That is wha
 
 `scripts/collect_env.sh` tells you which driver setup you have. Real output from our two H100 hosts, same software, different driver package:
 
-<img src="../images/driver-compare.png" width="900" alt="Two terminal windows side by side showing collect_env.sh output on two H100 NVL hosts with the same Isaac Sim 5.1 and Isaac Lab 2.3.2. Left, compute-only driver 580.173.02: NVIDIA Vulkan ICD missing. Right, full driver 595.99.02: NVIDIA Vulkan ICD present.">
+<p align="center">
+  <img src="../images/driver-compare.png" width="900" alt="Two terminal windows side by side showing collect_env.sh output on two H100 NVL hosts with the same Isaac Sim 5.1 and Isaac Lab 2.3.2. Left, compute-only driver 580.173.02: NVIDIA Vulkan ICD missing. Right, full driver 595.99.02: NVIDIA Vulkan ICD present.">
+</p>
 
 ## What the H100 is great for
 
