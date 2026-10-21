@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this guide, please cite it as below."
+title: "Isaac Lab on H100: train headless, render elsewhere"
+type: software
+authors:
+  - family-names: Kolesnichenko
+    given-names: Kyrylo
+    affiliation: "Advanced Telerobotics Research Lab, Kent State University"
+version: "0.1"
+date-released: "2026-10-21"
+license: MIT
+repository-code: "https://github.com/Kyk0/isaaclab-h100"
+url: "https://github.com/Kyk0/isaaclab-h100"
+keywords:
+  - isaac-lab
+  - isaac-sim
+  - h100
+  - a100
+  - reinforcement-learning
+  - humanoid
+  - robotics

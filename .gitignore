@@ -1,0 +1,20 @@
+# internal notes: never publish
+_internal/
+
+# local outputs
+logs/
+*.log
+*.pt
+*.onnx
+*.npz
+*.mp4
+# the small web clip for the site is tracked; the full video is a release asset
+!site/media/*.mp4
+SHA256SUMS.sync
+__pycache__/
+.DS_Store
+
+# robot USD is downloaded (scripts/download_usd.sh), not stored in git
+usd/
+# release artifacts (Hugging Face upload folder)
+dist/

@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isaac Lab on H100: train headless, render elsewhere</title>
+<meta name="description" content="Run Isaac Lab 2.x RL training headless on H100 GPUs. Why Isaac Sim says GPUs without RT cores are not supported, which errors like 'No device could be created' are harmless, and a ready Unitree G1 USD.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0b1017" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f9fc" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="__SITE_URL__/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Isaac Lab on H100">
+<meta property="og:title" content="Isaac Lab on H100: train headless, render elsewhere">
+<meta property="og:description" content="NVIDIA lists the H100 as unsupported for Isaac Sim. That is about rendering. Headless RL training works. A community-tested guide with real logs and a ready G1 USD.">
+<meta property="og:url" content="__SITE_URL__/">
+<meta property="og:image" content="__SITE_URL__/images/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Isaac Lab on H100: train headless, render elsewhere. A Unitree G1 robot next to two labels: physics on CUDA works on H100; rendering needs an RTX GPU.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Isaac Lab on H100: train headless, render elsewhere">
+<meta name="twitter:description" content="Headless RL training works on H100. Real logs, which errors are harmless, and a ready G1 USD.">
+<meta name="twitter:image" content="__SITE_URL__/images/social-preview.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="image" href="media/g1-walk-poster.jpg" fetchpriority="high">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0b1017; --bg-2: #0f151e; --surface: #121a25; --surface-2: #17212e; --border: #233042;
+    --text: #e9eef5; --muted: #a3afc0; --faint: #8592a5;
+    --accent: #38c6e8; --accent-soft: rgba(56, 198, 232, .12); --accent-text: #6fd8f2; --on-accent: #04131a;
+    --ok: #4ade80; --ok-soft: rgba(74, 222, 128, .12); --no: #ff8a80; --no-soft: rgba(255, 138, 128, .11);
+    --code-bg: #0a0f16; --code-text: #d7e0ec; --code-border: #233042; --code-comment: #7c8ba0;
+    --shadow: 0 24px 64px rgba(0, 0, 0, .5);
+    --radius: 16px; --max: 1000px;
+    --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f7f9fc; --bg-2: #eef2f7; --surface: #ffffff; --surface-2: #f2f5f9; --border: #d7dee8;
+      --text: #0f172a; --muted: #475569; --faint: #5b6779;
+      --accent: #0e7490; --accent-soft: rgba(14, 116, 144, .09); --accent-text: #0e6a84; --on-accent: #ffffff;
+      --ok: #116530; --ok-soft: rgba(17, 101, 48, .08); --no: #b42318; --no-soft: rgba(180, 35, 24, .07);
+      --shadow: 0 20px 50px rgba(15, 23, 42, .14);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent-text); text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  img, video { max-width: 100%; height: auto; display: block; }
+  code { font-family: var(--mono); font-size: .88em; background: var(--surface-2); border: 1px solid var(--border); padding: .08em .38em; border-radius: 6px; overflow-wrap: break-word; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+  .skip { position: absolute; left: -9999px; }
+  .skip:focus { left: 16px; top: 12px; z-index: 50; background: var(--surface); padding: 8px 12px; }
+  section { padding: 80px 0; }
+  section + section { border-top: 1px solid var(--border); }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; margin: 0; }
+  h2 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; }
+  h3 { font-size: 18px; font-weight: 700; }
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); margin: 0 0 12px; }
+  .lead { color: var(--muted); font-size: 18px; max-width: 760px; margin: 14px 0 0; }
+  .note { color: var(--faint); font-size: 14.5px; margin: 14px 0 0; }
+
+  /* header */
+  .top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+  .top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+  .brand img { width: 26px; height: 26px; }
+  .top nav { margin-left: auto; display: flex; gap: 20px; align-items: center; }
+  .top nav a { color: var(--muted); font-size: 14.5px; font-weight: 500; text-decoration: none; }
+  .top nav a:hover { color: var(--text); }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 10px; font: 600 15px var(--sans); border: 1px solid var(--border); color: var(--text); background: var(--surface); text-decoration: none; transition: transform .15s, border-color .15s; }
+  .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn svg { width: 18px; height: 18px; flex: none; }
+  .top .btn { padding: 7px 13px; font-size: 14px; }
+
+  /* hero */
+  .hero { padding: 72px 0 64px; text-align: center; position: relative; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: -220px 0 auto; height: 640px; background: radial-gradient(560px 300px at 50% 32%, var(--accent-soft), transparent 70%); pointer-events: none; }
+  .pill { display: inline-flex; gap: 8px; align-items: center; padding: 6px 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); color: var(--accent-text); font-size: 13.5px; font-weight: 600; }
+  .hero h1 { font-size: clamp(42px, 8vw, 80px); font-weight: 800; margin-top: 20px; letter-spacing: -.035em; }
+  .hero h1 span { color: var(--accent-text); }
+  .tag { font-size: clamp(20px, 3vw, 27px); font-weight: 500; margin: 12px 0 0; }
+  .hero .lead { margin: 18px auto 0; }
+  .lab { color: var(--faint); font-size: 15px; margin: 12px 0 0; }
+  .ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+  .stage { margin: 44px auto 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); background: #1b2230; aspect-ratio: 16 / 9; position: relative; }
+  .stage video { width: 100%; height: 100%; object-fit: cover; }
+  .caption { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: var(--faint); font-size: 14px; }
+
+  /* cards */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
+  .card { padding: 24px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
+  .card .badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; padding: 5px 11px; border-radius: 999px; margin-bottom: 14px; }
+  .badge.ok { color: var(--ok); background: var(--ok-soft); }
+  .badge.no { color: var(--no); background: var(--no-soft); }
+  .badge.fix { color: var(--accent-text); background: var(--accent-soft); }
+  .card p { color: var(--muted); margin: 8px 0 0; font-size: 15.5px; }
+  .quote { margin: 28px 0 0; padding: 18px 22px; border-left: 3px solid var(--no); background: var(--surface); border-radius: 0 12px 12px 0; color: var(--muted); }
+  .quote q { color: var(--text); font-weight: 600; }
+
+  .figure { margin: 32px 0 0; }
+  .figure img { border-radius: 14px; }
+  .shot { border-radius: 14px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); background: #0d1117; }
+
+  /* errors */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; margin-top: 32px; }
+  .errlist { margin: 0; padding: 16px 18px; border-radius: 14px; background: var(--code-bg); border: 1px solid var(--code-border); font: 13px/1.75 var(--mono); color: #ff9e95; overflow-x: auto; white-space: pre; }
+  .errlist .w { color: #e3b341; } .errlist .d { color: #c9d1d9; }
+  .ok-line { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: var(--ok-soft); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); font-size: 15.5px; }
+  .ok-line b { color: var(--ok); }
+
+  /* table */
+  .tbl { margin-top: 28px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+  th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 0; }
+  thead th { background: var(--surface-2); color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+  tbody tr { background: var(--surface); }
+  .y { color: var(--ok); font-weight: 600; } .m { color: #d29922; font-weight: 600; } .n { color: var(--no); font-weight: 600; }
+  @media (prefers-color-scheme: light) { .m { color: #9a6700; } }
+
+  /* code */
+  .code { position: relative; margin-top: 18px; border-radius: 14px; background: var(--code-bg); border: 1px solid var(--code-border); overflow: hidden; }
+  .code .bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 8px 16px; border-bottom: 1px solid var(--code-border); background: #111824; color: #8b98ab; font: 13px var(--mono); }
+  .code pre { margin: 0; padding: 18px 20px; overflow-x: auto; font: 14px/1.7 var(--mono); color: var(--code-text); }
+  .code .c { color: var(--code-comment); }
+  .copy { font: 600 12.5px var(--sans); color: #c9d1d9; background: #1c2533; border: 1px solid #2c384b; border-radius: 8px; padding: 5px 11px; cursor: pointer; }
+  .copy:hover { border-color: var(--accent); }
+  .steps { counter-reset: s; margin-top: 28px; display: grid; gap: 28px; }
+  .step h3 { display: flex; align-items: center; gap: 10px; }
+  .step h3::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); font-size: 14px; }
+
+  /* faq */
+  details { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 0 20px; margin-top: 12px; }
+  summary { cursor: pointer; padding: 17px 0; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--faint); font-size: 22px; line-height: 1; }
+  details[open] summary::after { content: "–"; }
+  details p { margin: 0 0 18px; color: var(--muted); }
+
+  /* roadmap */
+  .road { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
+  .road .card b { display: block; font-size: 14px; color: var(--accent-text); margin-bottom: 6px; }
+  .road .now { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+  /* footer */
+  footer { padding: 56px 0 72px; border-top: 1px solid var(--border); color: var(--muted); font-size: 15px; }
+  footer .cols { display: grid; grid-template-columns: 1fr 1.3fr; gap: 32px; }
+  footer h2 { font-size: 20px; margin-bottom: 10px; }
+  footer p { margin: 6px 0; }
+  .fine { margin-top: 32px; color: var(--faint); font-size: 14px; }
+
+  /* let grid columns shrink below their widest code line; code boxes scroll inside */
+  .split > *, .steps > *, .cards > *, .road > *, footer .cols > * { min-width: 0; }
+  .errlist, .code, .code pre { max-width: 100%; }
+  @media (max-width: 860px) {
+    .cards, .road, .split, footer .cols { grid-template-columns: 1fr; }
+    .top nav a.hide-sm { display: none; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 0 16px; }
+    section { padding: 60px 0; }
+    .top nav a:not(.btn) { display: none; }
+    th, td { padding: 11px 12px; font-size: 14.5px; }
+    .lead { font-size: 17px; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="favicon.svg" width="26" height="26" alt="">Isaac Lab on H100</a>
+    <nav aria-label="Sections">
+      <a class="hide-sm" href="#answer">Why it works</a>
+      <a class="hide-sm" href="#errors">Errors</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="#faq">FAQ</a>
+      <a class="btn" href="https://github.com/Kyk0/isaaclab-h100"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero" id="top">
+  <div class="wrap">
+    <span class="pill">Isaac Lab 2.x · Isaac Sim 5.x · tested on H100 NVL</span>
+    <h1>Isaac Lab on <span>H100</span></h1>
+    <p class="tag">Train headless. Render elsewhere.</p>
+    <p class="lead">NVIDIA lists GPUs without RT cores, like the H100, as unsupported for Isaac Sim. That is about rendering. Training does not render: the physics runs on CUDA, so headless RL training works on an H100. Here is exactly what we ran and which errors you can ignore.</p>
+    <p class="lab">Developed at the Advanced Telerobotics Research Lab, Kent State University.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#quickstart">Quickstart</a>
+      <a class="btn" href="https://github.com/Kyk0/isaaclab-h100"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+      <a class="btn" href="#usd">Download G1 USD</a>
+    </div>
+    <figure class="stage">
+      <video autoplay muted loop playsinline preload="auto" poster="media/g1-walk-poster.jpg" width="1280" height="720" aria-label="A Unitree G1 humanoid walks and turns on a dark floor, then 25 G1 robots walk together. The policy was trained headless on an H100 with Isaac Lab and rendered on an RTX GPU.">
+        <source src="media/g1-walk-720p.mp4" type="video/mp4">
+      </video>
+    </figure>
+    <div class="caption"><span>Isaac Lab's G1 walking task: trained headless on one H100, rendered on an RTX GPU.</span><a href="https://github.com/Kyk0/isaaclab-h100/releases/download/v0.1.0/g1-walk.mp4">Full video (20 s, 1080p)</a></div>
+  </div>
+</section>
+
+<section id="answer">
+  <div class="wrap">
+    <p class="eyebrow">The 30-second answer</p>
+    <h2>Isaac Sim on H100: no RT cores, and that's fine for training</h2>
+    <div class="cards">
+      <div class="card">
+        <span class="badge ok">✓ Training works</span>
+        <h3>Headless RL training</h3>
+        <p>PhysX runs on CUDA. Use <code>--headless</code>, skip cameras and <code>--video</code>, and train thousands of environments in parallel.</p>
+      </div>
+      <div class="card">
+        <span class="badge no">✕ Rendering doesn't</span>
+        <h3>No RT cores, often no Vulkan</h3>
+        <p>The RTX renderer needs RT cores. On servers with the compute-only driver there is no Vulkan or EGL either, so nothing renders at all.</p>
+      </div>
+      <div class="card">
+        <span class="badge fix">→ The fix</span>
+        <h3>Render on an RTX machine</h3>
+        <p>Train on the H100, copy the checkpoint with its <code>config.yaml</code>, and make videos on any machine with an RTX GPU.</p>
+      </div>
+    </div>
+    <p class="quote">NVIDIA's <a href="https://docs.isaacsim.omniverse.nvidia.com/5.1.0/installation/requirements.html">Isaac Sim 5.1 requirements</a>: <q>GPUs without RT Cores (A100, H100) are not supported.</q> That line is about the renderer. Headless training never calls it.</p>
+    <div class="figure">
+      <img src="images/two-gpu-jobs.svg" width="720" height="380" loading="lazy" alt="Diagram: Isaac Sim uses the GPU for two jobs. Physics goes through CUDA and works on an H100. Rendering needs Vulkan and RT cores, so it needs an RTX GPU. Workflow: train on the H100, copy the checkpoint, render on an RTX GPU.">
+    </div>
+  </div>
+</section>
+
+<section id="errors">
+  <div class="wrap">
+    <p class="eyebrow">Startup log</p>
+    <h2>Seeing "No device could be created"? You're probably fine</h2>
+    <p class="lead">At startup Isaac Sim tries to create a Vulkan device for the renderer, logs a wall of red, and carries on without it. These are the exact lines from our H100 logs:</p>
+    <div class="split">
+<pre class="errlist" tabindex="0" aria-label="Harmless startup messages">[Error] [gpu.foundation.plugin] No device could be created. Some known system issues:
+[Error] [gpu.foundation.plugin] The chosen activeGpu index 0 is higher than the available GPUs.
+[Error] [gpu.foundation.plugin] Invalid getDeviceInfo parameters.
+[Error] [omni.gpu_foundation_factory.plugin] Failed to create any GPU devices, including an attempt with compatibility mode.
+[Error] [omni.kit.renderer.plugin] GPU Foundation is not initialized!
+[Error] [omni.kit.renderer.plugin] Graphics plugins not available
+[Error] [omni.ui] Failed to create texture GPU data! [512 x 64, 1 mips]
+<span class="w">[Warning] [omni.physx.foundation.plugin] PhysXFoundation: Unable to get IGpuFoundation, GpuDevices or Graphics!</span>
+<span class="d">| Driver Version: 0             | Graphics API: Vulkan</span>
+<span class="d">Could not load the dynamic library ... libXt.so.6: cannot open shared object file</span>
+<span class="d">sh: 1: zenity: not found</span></pre>
+      <img class="shot" src="images/h100-startup-log.png" width="2124" height="1396" loading="lazy" alt="Terminal log from an H100 training run: red Isaac Sim renderer errors such as 'No device could be created' and 'Invalid getDeviceInfo parameters' and an empty Vulkan GPU table, followed by 'Environment device : cuda:0' and normal Learning iteration blocks">
+    </div>
+    <p class="ok-line"><b>The rule:</b> if the log then prints <code>Environment device : cuda:0</code> and starts <code>Learning iteration</code> blocks, every red line above it was harmless.</p>
+    <p class="note">Every message with its cause and fix, including the few that are real problems: <a href="https://github.com/Kyk0/isaaclab-h100/blob/master/docs/06-troubleshooting.md">troubleshooting</a>.</p>
+  </div>
+</section>
+
+<section id="driver">
+  <div class="wrap">
+    <p class="eyebrow">The hidden cause</p>
+    <h2>Nothing renders at all? Check the driver package</h2>
+    <p class="lead">Many data-center servers use the compute-only NVIDIA driver (<code>nvidia-headless-*-server</code>). It leaves out the graphics libraries, so there is no Vulkan and no EGL: not even MuJoCo can render. Same H100, same software, only the driver package differs:</p>
+    <div class="figure"><img class="shot" src="images/driver-compare.png" width="2720" height="817" loading="lazy" alt="collect_env.sh output on two H100 NVL hosts with the same software. Compute-only driver 580: NVIDIA Vulkan ICD missing. Full driver 595: NVIDIA Vulkan ICD present."></div>
+    <p class="note">Training works with either. If you also want MuJoCo rendering on the server, ask your admin for the full driver (<code>nvidia-driver-*-open</code>). <code>scripts/collect_env.sh</code> tells you which one you have.</p>
+  </div>
+</section>
+
+<section id="works">
+  <div class="wrap">
+    <p class="eyebrow">Tested</p>
+    <h2>What works on our H100</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th scope="col">Task</th><th scope="col">H100</th><th scope="col">RTX GPU</th></tr></thead>
+        <tbody>
+          <tr><td>Headless RL training</td><td class="y">✓ works</td><td class="y">✓</td></tr>
+          <tr><td>Loading a robot USD</td><td class="y">✓ works</td><td class="y">✓</td></tr>
+          <tr><td>URDF → USD conversion</td><td class="m">⚠ fails on some servers</td><td class="y">✓</td></tr>
+          <tr><td>MuJoCo rendering</td><td class="m">⚠ only with the full driver</td><td class="y">✓</td></tr>
+          <tr><td>Isaac Sim videos, cameras, viewport</td><td class="n">✕</td><td class="y">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">A community-tested setup, not supported by NVIDIA. Full details per driver and machine: <a href="https://github.com/Kyk0/isaaclab-h100/blob/master/docs/02-tested-versions.md">tested versions</a>. A100: same reason (no RT cores), so it should behave the same, but we have not tested it.</p>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="wrap">
+    <p class="eyebrow">Quickstart</p>
+    <h2>Train Isaac Lab on an H100 in three steps</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Check your machine</h3>
+        <div class="code"><div class="bar"><span>bash</span><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+<pre>bash scripts/collect_env.sh   <span class="c"># GPU, driver, versions, Vulkan</span></pre></div>
+      </div>
+      <div class="step">
+        <h3>Install Isaac Lab 2.x</h3>
+        <p class="note">The official conda + pip install, nothing H100-specific: <a href="https://github.com/Kyk0/isaaclab-h100/blob/master/docs/03-install.md">install notes</a>.</p>
+      </div>
+      <div class="step">
+        <h3>Train the G1 walking task, headless</h3>
+        <div class="code"><div class="bar"><span>bash</span><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+<pre>cd &lt;ISAACLAB_DIR&gt;
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+  --task Isaac-Velocity-Flat-G1-v0 --headless --num_envs 4096 --max_iterations 20</pre></div>
+        <p class="note">Look for <code>Environment device : cuda:0</code>. Drop <code>--max_iterations</code> to train the full 1500 iterations; that is the policy in the video above. More: <a href="https://github.com/Kyk0/isaaclab-h100/blob/master/docs/04-train-headless.md">SONIC fine-tune and flags</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="usd">
+  <div class="wrap">
+    <p class="eyebrow">Ready to load</p>
+    <h2>Pre-converted Unitree G1 USD</h2>
+    <p class="lead">The Unitree G1 exactly as SONIC uses it, already converted from URDF. Download it if you train SONIC, or if URDF conversion fails on your server.</p>
+    <div class="code"><div class="bar"><span>bash</span><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+<pre>bash scripts/download_usd.sh   <span class="c"># Hugging Face download, sha256 check, unpacks to usd/g1_sonic/</span>
+python scripts/convert_robot.py --verify usd/g1_sonic/g1_sonic.usd --base_height 0.76</pre></div>
+    <p class="note">Hosted at <a href="https://huggingface.co/datasets/Kyry10/unitree-g1-usd">huggingface.co/datasets/Kyry10/unitree-g1-usd</a>. License: Unitree meshes (BSD 3-Clause), URDF edits by BeyondMimic (MIT) and NVIDIA (Apache 2.0). Converting your own robot: <a href="https://github.com/Kyk0/isaaclab-h100/blob/master/docs/05-robot-usd.md">robot USD guide</a>.</p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <p class="eyebrow">FAQ</p>
+    <h2>Questions people ask</h2>
+    <details>
+      <summary>Does this work on an A100?</summary>
+      <p>It should: the A100 has no RT cores either, so it should behave just like the H100. We have not tested it yet. If you run Isaac Lab on an A100 (or H200, B200, L40S), please <a href="https://github.com/Kyk0/isaaclab-h100/issues/new?template=gpu-report.md">send a GPU report</a> with the output of <code>scripts/collect_env.sh</code>; every report goes into the table, with credit.</p>
+    </details>
+    <details>
+      <summary>What about Isaac Lab 3.0?</summary>
+      <p>Isaac Lab 3.0 came out on 2026-10-20. Its default install runs without Isaac Sim, on the Newton physics backend, and its docs say headless Newton simulation does not require RTX hardware. Many projects, SONIC included, are built on Isaac Lab 2.x and will stay there for a while; this guide is for them. A 3.x section is planned for v0.3.</p>
+    </details>
+    <details>
+      <summary>Can I use mjlab instead?</summary>
+      <p>Yes. <a href="https://github.com/mujocolab/mjlab">mjlab</a> puts Isaac Lab's API on top of MuJoCo Warp, with no Isaac Sim at all. We train motion-tracking policies with it on a compute-only H100, and the log is perfectly clean. Good choice if you don't need USD scenes, RTX cameras or PhysX.</p>
+    </details>
+    <details>
+      <summary>Docker, Apptainer or Slurm?</summary>
+      <p>Isaac Lab ships Docker images and a cluster guide for Singularity/Apptainer. The same rule applies inside containers: training needs only CUDA. The repo includes a Slurm starting template; containers and Slurm get their own section in v0.3. See <a href="https://github.com/Kyk0/isaaclab-h100/blob/master/docs/07-alternatives.md">alternatives</a>.</p>
+    </details>
+    <details>
+      <summary>Can I render on an H100 with the full driver?</summary>
+      <p>With the full driver, Isaac Sim does find a Vulkan device on the H100 and the startup log is clean. Rendering images is still outside what NVIDIA supports, and other users report crashes or noisy images with cameras on H100 and A100. For videos and camera data, use an RTX GPU.</p>
+    </details>
+  </div>
+</section>
+
+<section id="roadmap">
+  <div class="wrap">
+    <p class="eyebrow">Roadmap</p>
+    <h2>What's next</h2>
+    <div class="road">
+      <div class="card now"><b>v0.1 · now</b><h3>Headless on H100</h3><p>Install, train, every error explained, ready G1 USD.</p></div>
+      <div class="card"><b>v0.2</b><h3>Train on H100, render on RTX</h3><p>Checkpoint sync, RTX rendering, browser replay with <a href="https://github.com/nerfstudio-project/viser">viser</a>.</p></div>
+      <div class="card"><b>v0.3</b><h3>Isaac Lab 3.x, containers, Slurm</h3><p>Newton without Isaac Sim, Apptainer images, cluster jobs.</p></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h2>About</h2>
+        <p>By Kyrylo Kolesnichenko, Advanced Telerobotics Research Lab, Kent State University.</p>
+        <p>Scripts: MIT. Docs: CC BY 4.0. G1 USD: upstream licenses.</p>
+        <p><a href="https://github.com/Kyk0/isaaclab-h100">GitHub</a> · <a href="https://github.com/Kyk0/isaaclab-h100/issues/new?template=gpu-report.md">Send a GPU report</a> · <a href="https://huggingface.co/datasets/Kyry10/unitree-g1-usd">G1 USD on Hugging Face</a></p>
+      </div>
+      <div>
+        <h2>Cite</h2>
+        <div class="code"><div class="bar"><span>BibTeX</span><button class="copy" type="button" aria-label="Copy BibTeX">Copy</button></div>
+<pre>@software{kolesnichenko2026isaaclabh100,
+  author  = {Kolesnichenko, Kyrylo},
+  title   = {Isaac Lab on H100: train headless, render elsewhere},
+  year    = {2026},
+  version = {0.1.0},
+  url     = {https://github.com/Kyk0/isaaclab-h100}
+}</pre></div>
+      </div>
+    </div>
+    <p class="fine">A community-tested setup, not supported by NVIDIA. Not affiliated with NVIDIA or Unitree; product names are trademarks of their owners.</p>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll(".copy").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var pre = b.closest(".code").querySelector("pre");
+      var text = Array.from(pre.childNodes).map(function (n) { return n.nodeType === 1 && n.classList.contains("c") ? "" : n.textContent; }).join("").replace(/[ \t]+$/gm, "");
+      navigator.clipboard.writeText(text.trim() + "\n").then(function () {
+        b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500);
+      });
+    });
+  });
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    var v = document.querySelector(".stage video"); if (v) { v.removeAttribute("autoplay"); v.pause(); v.controls = true; }
+  }
+</script>
+</body>
+</html>
