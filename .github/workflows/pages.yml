@@ -35,9 +35,12 @@ jobs:
           cp -r site/. _site/
           imgs=(images/*.png images/*.jpg images/*.svg images/*.gif)   # no videos: the mp4 is a release asset
           if (( ${#imgs[@]} )); then cp "${imgs[@]}" _site/images/; fi
-          # absolute URLs (og:image, canonical, sitemap) and the sitemap date
+          # absolute URLs (og:image, canonical, sitemap) and the sitemap date;
+          # Pages may report the custom-domain base URL as http://, the site is served over https
+          SITE_URL="${{ steps.pages.outputs.base_url }}"
+          SITE_URL="${SITE_URL/#http:\/\//https://}"
           for f in _site/index.html _site/robots.txt _site/sitemap.xml; do
-            sed -i -e "s#__SITE_URL__#${{ steps.pages.outputs.base_url }}#g" -e "s#__LASTMOD__#$(date -u +%Y-%m-%d)#g" "$f"
+            sed -i -e "s#__SITE_URL__#${SITE_URL}#g" -e "s#__LASTMOD__#$(date -u +%Y-%m-%d)#g" "$f"
           done
           ls -la _site _site/images
       - uses: actions/upload-pages-artifact@v3

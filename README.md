@@ -2,7 +2,7 @@
 
 **Isaac Lab 2.x · Isaac Sim 5.x · tested on H100 NVL**
 
-**Website:** [kyk0.github.io/isaaclab-h100](https://kyk0.github.io/isaaclab-h100/)
+**Website:** [kyry.me/isaaclab-h100](https://kyry.me/isaaclab-h100/)
 
 [![Isaac Lab 2.3.2](https://img.shields.io/badge/Isaac%20Lab-2.3.2-76B900)](https://github.com/isaac-sim/IsaacLab/tree/v2.3.2)
 [![Isaac Sim 5.1](https://img.shields.io/badge/Isaac%20Sim-5.1-76B900)](https://docs.isaacsim.omniverse.nvidia.com/5.1.0/)
