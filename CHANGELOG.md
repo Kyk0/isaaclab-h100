@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.0: End to end on H100 (unreleased)
+## v0.2.0: End to end on H100 (2026-10-21)
 
 Train on the H100, watch in your browser. Isaac Lab still does the physics; nothing needs an RTX GPU.
 
