@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Isaac Lab on H100: train headless, render elsewhere</title>
-<meta name="description" content="Run Isaac Lab 2.x RL training headless on H100 GPUs. Why Isaac Sim says GPUs without RT cores are not supported, which errors like 'No device could be created' are harmless, and a ready Unitree G1 USD.">
+<meta name="description" content="Run Isaac Lab 2.x RL training headless on H100 GPUs. Why Isaac Sim says GPUs without RT cores are not supported, which errors like 'No device could be created' are harmless, how to watch rollouts in your browser with no RTX GPU, and a ready Unitree G1 USD.">
 <meta name="color-scheme" content="dark light">
 <meta name="theme-color" content="#0a0f16" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f9fc" media="(prefers-color-scheme: light)">
@@ -200,6 +200,17 @@
   .step h3 { display: flex; align-items: center; gap: 10px; }
   .step h3::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); font-size: 14px; flex: none; }
 
+  /* browser replay */
+  .viewer { margin-top: 28px; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); aspect-ratio: 1120 / 595; background: #141414; position: relative; }
+  .viewer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .viewer-start { all: unset; cursor: pointer; display: block; width: 100%; height: 100%; position: relative; }
+  .viewer-start img { width: 100%; height: 100%; object-fit: cover; }
+  .viewer-start .play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 10px; padding: 13px 20px; border-radius: 999px; background: rgba(8, 12, 18, .72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, .18); color: #eef3f8; font: 600 15.5px var(--sans); white-space: nowrap; }
+  .viewer-start .play small { color: #a3afc0; font-weight: 500; }
+  .viewer-start .play svg { width: 20px; height: 20px; color: #6fd8f2; }
+  .viewer-start:hover .play, .viewer-start:focus-visible .play { border-color: #6fd8f2; }
+  #browser .steps { margin-top: 32px; }
+
   /* docs grid */
   .docs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 30px; }
   .doc { display: block; padding: 18px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); color: var(--text); text-decoration: none; transition: border-color .15s, transform .15s; }
@@ -267,6 +278,7 @@
       <a class="nl hide-sm" href="#answer">Why it works</a>
       <a class="nl hide-sm" href="#errors">Errors</a>
       <a class="nl" href="#quickstart">Quickstart</a>
+      <a class="nl" href="#browser">Browser replay</a>
       <a class="nl hide-sm" href="#faq">FAQ</a>
       <button class="icon-btn" id="theme" type="button" aria-label="Toggle light and dark theme" title="Toggle theme">
         <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -317,8 +329,8 @@
       </div>
       <div class="card">
         <span class="badge fix">→ The fix</span>
-        <h3>Render on an RTX machine</h3>
-        <p>Train on the H100, copy the checkpoint with its <code>config.yaml</code>, and make videos on any machine with an RTX GPU.</p>
+        <h3>Render elsewhere, or not at all</h3>
+        <p>Make Isaac Sim videos on an RTX machine, or skip RTX entirely: record the motion and <a href="#browser">watch it in your browser</a>.</p>
       </div>
     </div>
     <p class="quote">NVIDIA's <a href="https://docs.isaacsim.omniverse.nvidia.com/5.1.0/installation/requirements.html">Isaac Sim 5.1 requirements</a>: <q>GPUs without RT Cores (A100, H100) are not supported.</q> That line is about the renderer. Headless training never calls it.</p>
@@ -406,6 +418,40 @@
   </div>
 </section>
 
+<section id="browser" class="reveal">
+  <div class="wrap">
+    <p class="eyebrow">New in v0.2 · no RTX at all</p>
+    <h2>Watch Isaac Lab in your browser, no RTX GPU anywhere</h2>
+    <p class="lead">Isaac Lab still does the physics on the H100. Record what the robot does, then replay it with <a href="https://github.com/nerfstudio-project/viser">viser</a>: your browser draws it, so the server never renders. This works even on servers with the compute-only driver.</p>
+    <div class="viewer" id="viewer">
+      <button class="viewer-start" id="viewer-start" type="button" aria-label="Load the interactive 3D replay">
+        <img src="media/viewer-poster.jpg" width="1120" height="595" loading="lazy" alt="Preview of the interactive 3D replay: a Unitree G1 walking on a grid, drawn in the browser by viser from an Isaac Lab rollout recorded on an H100.">
+        <span class="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Load interactive 3D replay <small>(2.5 MB)</small></span>
+      </button>
+    </div>
+    <p class="note center">Drag to orbit, scroll to zoom. Physics: Isaac Lab on an H100. Drawing: your browser.</p>
+    <div class="steps">
+      <div class="step">
+        <h3>Record a rollout on the H100 (physics only)</h3>
+        <div class="code"><div class="bar"><span>bash</span><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+<pre>./isaaclab.sh -p scripts/record_rollout.py --task Isaac-Velocity-Flat-G1-Play-v0 \
+  --policy &lt;RUN_DIR&gt;/exported/policy.pt --out rollouts/g1_walk.npz</pre></div>
+      </div>
+      <div class="step">
+        <h3>Replay it in your browser</h3>
+        <div class="code"><div class="bar"><span>bash</span><button class="copy" type="button" aria-label="Copy command">Copy</button></div>
+<pre>uv run --with viser --with trimesh python scripts/replay_viser.py \
+  --rollout rollouts/g1_walk.npz --urdf &lt;URDF&gt; --follow   <span class="c"># then ssh -L 8080:localhost:8080</span></pre></div>
+      </div>
+      <div class="step">
+        <h3>Share it: a web page or an mp4</h3>
+        <p class="note"><code>--save g1_walk.viser</code> makes a file for viser's static player (that is the replay above). <code>--video g1_walk.mp4</code> renders frames in a headless browser on the CPU, even on the H100 server. With EGL, <code>scripts/render_mujoco.py</code> is faster. Full guide: <a href="https://github.com/Kyk0/isaaclab-h100/blob/master/docs/08-no-rtx-pipeline.md">no RTX at all</a>.</p>
+      </div>
+    </div>
+    <p class="note">A replay of the simulated poses, not Isaac Sim's RTX renderer. Great for state-based policies; policies that read simulated camera images still need an RTX GPU.</p>
+  </div>
+</section>
+
 <section id="usd" class="reveal">
   <div class="wrap">
     <p class="eyebrow">Ready to load</p>
@@ -457,7 +503,7 @@ python scripts/convert_robot.py --verify usd/g1_sonic/g1_sonic.usd --base_height
     </details>
     <details>
       <summary>Can I render on an H100 with the full driver?</summary>
-      <p>With the full driver, Isaac Sim does find a Vulkan device on the H100 and the startup log is clean. Rendering images is still outside what NVIDIA supports, and other users report crashes or noisy images with cameras on H100 and A100. For videos and camera data, use an RTX GPU.</p>
+      <p>With the full driver, Isaac Sim does find a Vulkan device on the H100 and the startup log is clean. Rendering images is still outside what NVIDIA supports, and other users report crashes or noisy images with cameras on H100 and A100. For Isaac Sim videos and camera data, use an RTX GPU. To just watch a policy, the <a href="#browser">browser replay</a> needs no RTX at all.</p>
     </details>
   </div>
 </section>
@@ -467,8 +513,8 @@ python scripts/convert_robot.py --verify usd/g1_sonic/g1_sonic.usd --base_height
     <p class="eyebrow">Roadmap</p>
     <h2>What's next</h2>
     <div class="road">
-      <div class="card now"><b>v0.1 · now</b><h3>Headless on H100</h3><p>Install, train, every error explained, ready G1 USD.</p></div>
-      <div class="card"><b>v0.2</b><h3>Train on H100, render on RTX</h3><p>Checkpoint sync, RTX rendering, browser replay with <a href="https://github.com/nerfstudio-project/viser">viser</a>.</p></div>
+      <div class="card"><b>v0.1</b><h3>Headless on H100</h3><p>Install, train, every error explained, ready G1 USD.</p></div>
+      <div class="card now"><b>v0.2 · now</b><h3>No RTX at all</h3><p>Record on the H100, replay in the browser with <a href="https://github.com/nerfstudio-project/viser">viser</a>, mp4 without a GPU, MuJoCo option.</p></div>
       <div class="card"><b>v0.3</b><h3>Isaac Lab 3.x, containers, Slurm</h3><p>Newton without Isaac Sim, Apptainer images, cluster jobs.</p></div>
     </div>
   </div>
@@ -529,6 +575,16 @@ python scripts/convert_robot.py --verify usd/g1_sonic/g1_sonic.usd --base_height
         var text = Array.from(pre.childNodes).map(function (n) { return n.nodeType === 1 && n.classList.contains("c") ? "" : n.textContent; }).join("").replace(/[ \t]+$/gm, "");
         navigator.clipboard.writeText(text.trim() + "\n").then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); });
       });
+    });
+
+    // browser replay: load viser's static player only on click
+    var vs = document.getElementById("viewer-start");
+    if (vs) vs.addEventListener("click", function () {
+      var f = document.createElement("iframe");
+      f.title = "Interactive 3D replay of an Isaac Lab rollout (viser)";
+      f.src = "viewer/index.html?playbackPath=g1_walk.viser&initialCameraPosition=1.25,-1.95,1.0&initialCameraLookAt=0,0,0.55&hideViserLogo" + (current() === "dark" ? "&darkMode" : "");
+      f.setAttribute("allow", "fullscreen");
+      document.getElementById("viewer").replaceChild(f, vs);
     });
 
     // reduced motion: no autoplay, show controls

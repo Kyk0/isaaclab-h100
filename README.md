@@ -34,7 +34,7 @@ Developed at the Advanced Telerobotics Research Lab, Kent State University.
       <img src="images/h100-startup-log.png" width="720" alt="Terminal log from an H100 training run: red Isaac Sim renderer errors such as 'No device could be created' and 'Invalid getDeviceInfo parameters' and an empty Vulkan GPU table, followed by 'Environment device : cuda:0' and normal Learning iteration blocks">
     </p>
 
-- **Videos and cameras don't work.** Render on a machine with an RTX GPU.
+- **Videos and cameras don't work.** Render on a machine with an RTX GPU, or skip RTX entirely: record the motion and [watch it in your browser](#no-rtx-at-all-watch-it-in-your-browser).
 - **Can't render anything, not even MuJoCo?** Your server probably has the compute-only driver (`nvidia-headless-*-server`). It ships without Vulkan and EGL. Ask your admin for the full driver (`nvidia-driver-*-open`).
 - **Robot from URDF fails to load?** On some servers the URDF → USD conversion crashes. Convert once on an RTX machine (or download our G1 USD) and load the USD instead.
 
@@ -77,6 +77,26 @@ That's it for most people. More:
 - **SONIC fine-tune** from NVIDIA's released checkpoint: [docs/04-train-headless.md](docs/04-train-headless.md)
 - **Your own robot:** convert URDF → USD on an RTX machine, copy it to the H100: [docs/05-robot-usd.md](docs/05-robot-usd.md)
 
+## No RTX at all: watch it in your browser
+
+Isaac Lab still does the physics on the H100. Record what the robot does, then replay it with [viser](https://github.com/nerfstudio-project/viser): your browser draws it, so the server never renders, even with the compute-only driver. [Try the interactive replay](https://kyry.me/isaaclab-h100/#browser) on the website.
+
+<p align="center">
+  <a href="https://kyry.me/isaaclab-h100/#browser"><img src="site/media/viewer-poster.jpg" width="640" alt="A Unitree G1 walking on a grid, drawn in the browser by viser from an Isaac Lab rollout recorded on an H100. Click to open the interactive 3D replay on the website."></a>
+</p>
+
+```bash
+# 1. on the H100: run a trained policy, physics only, and record every link's pose
+./isaaclab.sh -p scripts/record_rollout.py --task Isaac-Velocity-Flat-G1-Play-v0 \
+  --policy <RUN_DIR>/exported/policy.pt --out rollouts/g1_walk.npz
+
+# 2. anywhere: replay in the browser (ssh -L 8080:localhost:8080 to view a server)
+uv run --with viser --with trimesh python scripts/replay_viser.py \
+  --rollout rollouts/g1_walk.npz --urdf <URDF> --follow
+```
+
+Add `--save g1_walk.viser` for a shareable web page, or `--video g1_walk.mp4` for an mp4 drawn by a headless browser on the CPU. Where EGL exists, `scripts/render_mujoco.py` makes the mp4 faster. Details and limits: [docs/08-no-rtx-pipeline.md](docs/08-no-rtx-pipeline.md).
+
 ## Docs
 
 1. [Why it works](docs/01-why-it-works.md)
@@ -86,6 +106,7 @@ That's it for most people. More:
 5. [Robot USD](docs/05-robot-usd.md)
 6. [Troubleshooting](docs/06-troubleshooting.md): search your exact error here
 7. [Alternatives](docs/07-alternatives.md): mjlab, Isaac Lab 3.0, containers, Slurm
+8. [No RTX at all](docs/08-no-rtx-pipeline.md): record on the H100, watch in the browser, mp4 without a GPU
 
 ## Ready G1 USD
 
@@ -112,12 +133,15 @@ Isaac Lab's built-in G1 tasks don't need it; they download NVIDIA's own G1 model
 | [download_usd.sh](scripts/download_usd.sh) | Downloads and checks the G1 USD |
 | [convert_robot.py](scripts/convert_robot.py) | Converts your URDF to USD, and `--verify` checks that it loads |
 | [train_headless_example.sh](scripts/train_headless_example.sh) | SONIC fine-tune, headless |
+| [record_rollout.py](scripts/record_rollout.py) | Runs a trained policy headless and records every link's pose to `.npz` |
+| [replay_viser.py](scripts/replay_viser.py) | Replays a recording in the browser; `--save` for a web page, `--video` for an mp4 (no GPU) |
+| [render_mujoco.py](scripts/render_mujoco.py) | Renders a recording to mp4 with MuJoCo (needs EGL on servers) |
 | [slurm_example.sbatch](scripts/slurm_example.sbatch) | Slurm starting template (not run on a cluster yet) |
 
 ## Roadmap
 
-- **v0.1 (now):** run Isaac Lab 2.x headless on H100
-- **v0.2:** train on H100, render on RTX: checkpoint sync, RTX rendering, browser replay with [viser](https://github.com/nerfstudio-project/viser)
+- **v0.1:** run Isaac Lab 2.x headless on H100
+- **v0.2 (now):** no RTX at all: record on the H100, replay in the browser with viser, mp4 without a GPU, MuJoCo option
 - **v0.3:** Isaac Lab 3.x, containers, Slurm
 
 ## License and citation
