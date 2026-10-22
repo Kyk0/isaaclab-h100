@@ -5,7 +5,7 @@ The short version: Isaac Sim uses the GPU for two different jobs, and training o
 ## Two separate GPU jobs
 
 <p align="center">
-  <img src="../images/two-gpu-jobs.svg" width="720" alt="Diagram: Isaac Sim uses the GPU for two jobs. Physics goes through CUDA and works on an H100. Rendering needs Vulkan and RT cores, so it needs an RTX GPU and fails on an H100. Workflow: train on the H100, copy the checkpoint, render on an RTX GPU.">
+  <img src="../images/two-gpu-jobs.svg" width="720" alt="Diagram: Isaac Sim uses the GPU for two jobs. Physics goes through CUDA and works on an H100. Rendering needs Vulkan and RT cores, so it needs an RTX GPU and fails on an H100. Pipeline: train on the H100, record on the H100, watch in a browser; no step needs RT cores.">
 </p>
 
 | | Physics | Rendering |

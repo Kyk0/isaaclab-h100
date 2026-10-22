@@ -1,25 +1,36 @@
-# Isaac Lab on H100: train headless, render elsewhere
-
-**Isaac Lab 2.x · Isaac Sim 5.x · tested on H100 NVL**
-
-**Website:** [kyry.me/isaaclab-h100](https://kyry.me/isaaclab-h100/)
-
-[![Isaac Lab 2.3.2](https://img.shields.io/badge/Isaac%20Lab-2.3.2-76B900)](https://github.com/isaac-sim/IsaacLab/tree/v2.3.2)
-[![Isaac Sim 5.1](https://img.shields.io/badge/Isaac%20Sim-5.1-76B900)](https://docs.isaacsim.omniverse.nvidia.com/5.1.0/)
-[![Tested on H100 NVL](https://img.shields.io/badge/tested-H100%20NVL-blue)](docs/02-tested-versions.md)
-[![Scripts: MIT](https://img.shields.io/badge/scripts-MIT-lightgrey)](LICENSE)
-[![Docs: CC BY 4.0](https://img.shields.io/badge/docs-CC%20BY%204.0-lightgrey)](LICENSE-docs)
+<p align="center">
+  <img src="images/logo.svg" width="76" alt="">
+</p>
+<h1 align="center">Isaac Lab, end to end on H100</h1>
+<p align="center">
+  <b>Train headless. Record. Watch in your browser. No RTX GPU anywhere.</b><br>
+  Isaac Lab 2.x · Isaac Sim 5.x · tested on H100 NVL
+</p>
+<p align="center">
+  <a href="https://kyry.me/isaaclab-h100/"><b>Website</b></a> ·
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="https://kyry.me/isaaclab-h100/#browser">Live 3D replay</a> ·
+  <a href="docs/06-troubleshooting.md">Errors</a> ·
+  <a href="https://huggingface.co/datasets/Kyry10/unitree-g1-usd">G1 USD</a>
+</p>
+<p align="center">
+  <a href="https://github.com/isaac-sim/IsaacLab/tree/v2.3.2"><img src="https://img.shields.io/badge/Isaac%20Lab-2.3.2-76B900" alt="Isaac Lab 2.3.2"></a>
+  <a href="https://docs.isaacsim.omniverse.nvidia.com/5.1.0/"><img src="https://img.shields.io/badge/Isaac%20Sim-5.1-76B900" alt="Isaac Sim 5.1"></a>
+  <a href="docs/02-tested-versions.md"><img src="https://img.shields.io/badge/tested-H100%20NVL-38c6e8" alt="Tested on H100 NVL"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/scripts-MIT-lightgrey" alt="Scripts: MIT"></a>
+  <a href="LICENSE-docs"><img src="https://img.shields.io/badge/docs-CC%20BY%204.0-lightgrey" alt="Docs: CC BY 4.0"></a>
+</p>
 
 <p align="center">
-  <a href="https://github.com/Kyk0/isaaclab-h100/releases/download/v0.1.0/g1-walk.mp4"><img src="images/g1-walk.gif" width="640" alt="Unitree G1 walking and turning on a dark studio floor: a policy we trained headless on an H100 with Isaac Lab's Isaac-Velocity-Flat-G1-v0 task, played back and rendered on an RTX 6000"></a>
+  <a href="https://github.com/Kyk0/isaaclab-h100/releases/download/v0.2.0/g1-walk-h100-1080p.mp4"><img src="images/g1-h100.gif" width="600" alt="Unitree G1 walking and turning on a dark grid floor. Trained headless on an H100 with Isaac Lab's Isaac-Velocity-Flat-G1-v0 task, recorded on an H100, and drawn by MuJoCo on an H100. No RTX GPU."></a>
 </p>
-<p align="center"><sub>Trained headless on an H100, rendered on an RTX GPU. <a href="https://github.com/Kyk0/isaaclab-h100/releases/download/v0.1.0/g1-walk.mp4">Full video (20 s, 1080p)</a></sub></p>
+<p align="center"><sub>Trained, recorded and drawn on H100s. No RTX GPU. <a href="https://github.com/Kyk0/isaaclab-h100/releases/download/v0.2.0/g1-walk-h100-1080p.mp4">Full video (1080p)</a> · <a href="https://github.com/Kyk0/isaaclab-h100/releases/download/v0.1.0/g1-walk.mp4">same policy, rendered with RTX</a></sub></p>
 
 <!-- Suggested GitHub description:
-Train Isaac Lab 2.x policies headless on H100 GPUs: what works, which errors are harmless, and a ready G1 USD. -->
-<!-- Suggested topics: isaac-lab, isaac-sim, h100, a100, reinforcement-learning, humanoid, robotics -->
+Isaac Lab end to end on H100: train headless, record, watch in your browser. No RTX GPU anywhere. -->
+<!-- Suggested topics: isaac-lab, isaac-sim, h100, a100, reinforcement-learning, humanoid, robotics, viser, mujoco -->
 
-NVIDIA says Isaac Sim does not support GPUs without RT cores, like the H100. That is about **rendering**. Training does not render: the physics runs on CUDA. So headless RL training works on an H100.
+NVIDIA says Isaac Sim does not support GPUs without RT cores, like the H100. That is about **rendering**. Training does not render: the physics runs on CUDA. So headless RL training works on an H100. And to see what a policy does, you don't need Isaac Sim's renderer either: record the motion on the H100 and watch it in your browser.
 
 We have trained humanoid policies this way on shared H100 servers since June 2026, including fine-tuning NVIDIA's [SONIC](https://github.com/NVlabs/GR00T-WholeBodyControl) controller for the Unitree G1. This repo shows exactly what we ran and which errors you can ignore. It is a community-tested setup, not one supported by NVIDIA.
 
@@ -34,12 +45,12 @@ Developed at the Advanced Telerobotics Research Lab, Kent State University.
       <img src="images/h100-startup-log.png" width="720" alt="Terminal log from an H100 training run: red Isaac Sim renderer errors such as 'No device could be created' and 'Invalid getDeviceInfo parameters' and an empty Vulkan GPU table, followed by 'Environment device : cuda:0' and normal Learning iteration blocks">
     </p>
 
-- **Videos and cameras don't work.** Render on a machine with an RTX GPU, or skip RTX entirely: record the motion and [watch it in your browser](#no-rtx-at-all-watch-it-in-your-browser).
-- **Can't render anything, not even MuJoCo?** Your server probably has the compute-only driver (`nvidia-headless-*-server`). It ships without Vulkan and EGL. Ask your admin for the full driver (`nvidia-driver-*-open`).
+- **Watch policies without RTX.** Isaac Sim videos and cameras don't work, and you don't need them to see a policy: record the motion and [watch it in your browser](#watch-it-no-rtx-anywhere). For Isaac Sim's own renderer, use an RTX GPU.
+- **Can't render anything, not even MuJoCo?** Your server probably has the compute-only driver (`nvidia-headless-*-server`). It ships without Vulkan and EGL. Ask your admin for the full driver (`nvidia-driver-*-open`). The browser replay works either way.
 - **Robot from URDF fails to load?** On some servers the URDF → USD conversion crashes. Convert once on an RTX machine (or download our G1 USD) and load the USD instead.
 
 <p align="center">
-  <img src="images/two-gpu-jobs.svg" width="720" alt="Diagram: Isaac Sim uses the GPU for two jobs. Physics goes through CUDA and works on an H100. Rendering needs Vulkan and RT cores, so it needs an RTX GPU and fails on an H100. Workflow: train on the H100, copy the checkpoint, render on an RTX GPU.">
+  <img src="images/two-gpu-jobs.svg" width="720" alt="Diagram: Isaac Sim uses the GPU for two jobs. Physics goes through CUDA and works on an H100. Rendering needs Vulkan and RT cores, so it needs an RTX GPU and fails on an H100. Pipeline: train on the H100, record on the H100, watch in a browser; no step needs RT cores.">
 </p>
 
 ## What works on our H100
@@ -50,6 +61,7 @@ Developed at the Advanced Telerobotics Research Lab, Kent State University.
 | Loading a robot USD | ✅ | ✅ |
 | URDF → USD conversion | ⚠️ fails on some servers | ✅ |
 | MuJoCo rendering | ⚠️ only with the full driver | ✅ |
+| Watching a policy ([browser replay](#watch-it-no-rtx-anywhere)) | ✅ | ✅ |
 | Isaac Sim videos, cameras, viewport | ❌ | ✅ |
 
 Full details per driver and machine: [tested versions](docs/02-tested-versions.md).
@@ -72,17 +84,17 @@ cd <ISAACLAB_DIR>
   --task Isaac-Velocity-Flat-G1-v0 --headless --num_envs 4096 --max_iterations 20
 ```
 
-That's it for most people. More:
+Then [watch it](#watch-it-no-rtx-anywhere). More:
 
 - **SONIC fine-tune** from NVIDIA's released checkpoint: [docs/04-train-headless.md](docs/04-train-headless.md)
 - **Your own robot:** convert URDF → USD on an RTX machine, copy it to the H100: [docs/05-robot-usd.md](docs/05-robot-usd.md)
 
-## No RTX at all: watch it in your browser
+## Watch it, no RTX anywhere
 
 Isaac Lab still does the physics on the H100. Record what the robot does, then replay it with [viser](https://github.com/nerfstudio-project/viser): your browser draws it, so the server never renders, even with the compute-only driver. [Try the interactive replay](https://kyry.me/isaaclab-h100/#browser) on the website.
 
 <p align="center">
-  <a href="https://kyry.me/isaaclab-h100/#browser"><img src="site/media/viewer-poster.jpg" width="640" alt="A Unitree G1 walking on a grid, drawn in the browser by viser from an Isaac Lab rollout recorded on an H100. Click to open the interactive 3D replay on the website."></a>
+  <a href="https://kyry.me/isaaclab-h100/#browser"><picture><source media="(prefers-color-scheme: dark)" srcset="site/media/viewer-poster-dark.jpg"><img src="site/media/viewer-poster.jpg" width="640" alt="A Unitree G1 walking on a grid, drawn in the browser by viser from an Isaac Lab rollout recorded on an H100. Click to open the interactive 3D replay on the website."></picture></a>
 </p>
 
 ```bash
@@ -106,7 +118,7 @@ Add `--save g1_walk.viser` for a shareable web page, or `--video g1_walk.mp4` fo
 5. [Robot USD](docs/05-robot-usd.md)
 6. [Troubleshooting](docs/06-troubleshooting.md): search your exact error here
 7. [Alternatives](docs/07-alternatives.md): mjlab, Isaac Lab 3.0, containers, Slurm
-8. [No RTX at all](docs/08-no-rtx-pipeline.md): record on the H100, watch in the browser, mp4 without a GPU
+8. [No RTX at all](docs/08-no-rtx-pipeline.md): record on the H100, watch in the browser, mp4 without a GPU **(new in v0.2)**
 
 ## Ready G1 USD
 
@@ -141,7 +153,7 @@ Isaac Lab's built-in G1 tasks don't need it; they download NVIDIA's own G1 model
 ## Roadmap
 
 - **v0.1:** run Isaac Lab 2.x headless on H100
-- **v0.2 (now):** no RTX at all: record on the H100, replay in the browser with viser, mp4 without a GPU, MuJoCo option
+- **v0.2 (now):** end to end on H100: record on the H100, replay in the browser with viser, mp4 without a GPU, MuJoCo option
 - **v0.3:** Isaac Lab 3.x, containers, Slurm
 
 ## License and citation

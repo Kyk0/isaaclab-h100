@@ -1,6 +1,6 @@
-# 8. No RTX at all: train on H100, watch in your browser
+# 8. No RTX at all: end to end on H100
 
-Docs 01–07 split the work: train on the H100, render on an RTX machine. This page removes the RTX machine.
+Docs 01–07 get training running on the H100. This page closes the loop: see what your policy does without an RTX machine.
 
 Isaac Lab still does all the physics on the H100. We record what the robot does, then **draw it somewhere that doesn't need RT cores**:
 
@@ -82,8 +82,11 @@ uv run --with viser --with trimesh --with fast-simplification --with playwright 
 
 ```bash
 MUJOCO_GL=egl uv run --with mujoco --with trimesh --with imageio --with imageio-ffmpeg \
-  python scripts/render_mujoco.py --rollout rollouts/g1_walk.npz --urdf <URDF> --out g1_walk_mujoco.mp4
+  python scripts/render_mujoco.py --rollout rollouts/g1_walk.npz --urdf <URDF> --out g1_walk_mujoco.mp4 \
+  --heading --azimuth 150 --distance 2.6 --elevation -12 --size 1920x1080
 ```
+
+`--heading` turns the camera with the robot, so it keeps a 3/4 front view while the robot turns. That command made the video at the top of the [README](../README.md).
 
 - 20 s on the full-driver H100. On the compute-only driver it fails with `AttributeError: 'NoneType' object has no attribute 'eglQueryString'` (no EGL; see [doc 01](01-why-it-works.md)). On a laptop, drop `MUJOCO_GL=egl`.
 

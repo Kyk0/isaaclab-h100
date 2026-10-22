@@ -27,8 +27,10 @@ p.add_argument("--env", type=int, default=0)
 p.add_argument("--fps", type=float, default=30.0)
 p.add_argument("--size", default="1280x720")
 p.add_argument("--distance", type=float, default=3.0, help="camera distance (tracks the robot)")
-p.add_argument("--azimuth", type=float, default=135.0)
+p.add_argument("--azimuth", type=float, default=135.0, help="degrees (relative to the robot with --heading)")
 p.add_argument("--elevation", type=float, default=-15.0)
+p.add_argument("--heading", action="store_true",
+               help="turn the camera with the robot (smoothed), so it keeps the same 3/4 view while the robot turns")
 a = p.parse_args()
 
 d = np.load(a.rollout)
@@ -76,13 +78,16 @@ def build_model(urdf_path, tmp):
         if geoms:
             mocap_of[name] = len(bodies)
             bodies.append(f'<body name="{name}" mocap="true">{"".join(geoms)}</body>')
-    xml = f"""<mujoco><visual><global offwidth="1920" offheight="1080"/><quality shadowsize="4096"/></visual>
-      <asset><texture name="sky" type="skybox" builtin="gradient" rgb1="0.35 0.42 0.52" rgb2="0.08 0.1 0.14" width="256"
-        height="256"/><texture name="grid" type="2d" builtin="checker" rgb1="0.24 0.26 0.3" rgb2="0.2 0.22 0.26"
-        width="512" height="512" mark="edge" markrgb="0.38 0.42 0.48"/>
-        <material name="grid" texture="grid" texrepeat="40 40" reflectance="0.05"/>{"".join(assets)}</asset>
-      <worldbody><light pos="0 0 6" dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8"/>
-        <geom type="plane" size="50 50 0.1" material="grid"/>{"".join(bodies)}</worldbody></mujoco>"""
+    xml = f"""<mujoco><visual><global offwidth="1920" offheight="1080"/><quality shadowsize="8192" offsamples="8"/>
+        <headlight ambient="0.25 0.27 0.3" diffuse="0.25 0.25 0.25" specular="0.05 0.05 0.05"/>
+        <map znear="0.01" zfar="200"/><rgba haze="0.05 0.08 0.12 1"/></visual>
+      <asset><texture name="sky" type="skybox" builtin="gradient" rgb1="0.1 0.15 0.22" rgb2="0.02 0.03 0.05" width="512"
+        height="512"/><texture name="grid" type="2d" builtin="checker" rgb1="0.09 0.12 0.16" rgb2="0.07 0.09 0.13"
+        width="512" height="512" mark="edge" markrgb="0.13 0.36 0.45"/>
+        <material name="grid" texture="grid" texrepeat="50 50" reflectance="0.12"/>{"".join(assets)}</asset>
+      <worldbody><light pos="2 -3 6" dir="-0.3 0.45 -1" directional="true" castshadow="true" diffuse="0.75 0.75 0.75"/>
+        <light pos="-3 3 4" dir="0.5 -0.5 -0.6" directional="true" castshadow="false" diffuse="0.18 0.3 0.38"/>
+        <geom type="plane" size="100 100 0.1" material="grid"/>{"".join(bodies)}</worldbody></mujoco>"""
     return mujoco.MjModel.from_xml_string(xml), mocap_of
 
 
@@ -95,15 +100,21 @@ cam = mujoco.MjvCamera()
 cam.distance, cam.azimuth, cam.elevation = a.distance, a.azimuth, a.elevation
 idx = {n: body_names.index(n) for n in mocap_of}
 root_i = 0  # first recorded body = articulation root (pelvis)
+w, x, y, z = body_quat[:, root_i].T
+yaw = np.unwrap(np.arctan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
+if a.heading:
+    for t in range(1, len(yaw)):  # smooth (~1 s), so the camera doesn't sway with every step
+        yaw[t] = yaw[t - 1] + 0.02 * (yaw[t] - yaw[t - 1])
 
-writer = imageio.get_writer(a.out, fps=1.0 / (stride * dt), codec="libx264", quality=8, macro_block_size=8,
-                            ffmpeg_params=["-pix_fmt", "yuv420p"])
+writer = imageio.get_writer(a.out, fps=1.0 / (stride * dt), codec="libx264", quality=8, macro_block_size=8)
 for t in range(0, body_pos.shape[0], stride):
     for name, m in mocap_of.items():
         data.mocap_pos[m] = body_pos[t, idx[name]]
         data.mocap_quat[m] = body_quat[t, idx[name]]
     mujoco.mj_forward(model, data)
     cam.lookat[:] = body_pos[t, root_i] * np.array([1, 1, 0]) + np.array([0, 0, 0.6])
+    if a.heading:
+        cam.azimuth = math.degrees(yaw[t]) + a.azimuth
     renderer.update_scene(data, camera=cam)
     writer.append_data(renderer.render())
 writer.close()

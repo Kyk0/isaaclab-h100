@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this guide, please cite it as below."
-title: "Isaac Lab on H100: train headless, render elsewhere"
+title: "Isaac Lab, end to end on H100"
 type: software
 authors:
   - family-names: Kolesnichenko

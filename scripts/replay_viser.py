@@ -173,7 +173,7 @@ if a.video:
         client.camera.look_at = tuple(float(x) for x in cam_look)
         time.sleep(1.0)
         writer = imageio.get_writer(a.video, fps=1.0 / (stride * dt), codec="libx264", quality=8,
-                                    macro_block_size=8, ffmpeg_params=["-pix_fmt", "yuv420p"])
+                                    macro_block_size=8)
         t0 = time.time()
         for fi in range(len(frames)):
             show(fi)
